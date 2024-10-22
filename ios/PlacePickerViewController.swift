@@ -287,8 +287,14 @@ class PlacePickerViewController: UIViewController {
         let result = PlacePickerResult(
             coordinate: .init(wrappedValue:  PlacePickerCoordinate(latitude: .init(wrappedValue: mapView.centerCoordinate.latitude), longitude: .init(wrappedValue: mapView.centerCoordinate.longitude))),
             address: .init(wrappedValue: PlacePickerAddress(with: self.lastLocation)),
-            didCancel: .init(wrappedValue: false))
-        promise?.resolve(result)
+            didCancel: .init(wrappedValue: false)
+        )
+        
+        // Pass the place name along with the coordinates
+        let selectedPlaceName = self.lastLocation?.name ?? "Unnamed Location"
+        let response = ["placeName": selectedPlaceName, "coordinates": result.coordinate]
+
+        promise?.resolve(response) // Send response back to React Native
         promise = nil
         DispatchQueue.main.async {
             self.dismiss(animated: true)
@@ -399,9 +405,18 @@ extension PlacePickerViewController: DropDownButtonDelegate {
         if let title = selectedResult.attrTitle?.string, let subTitle = selectedResult.attrSubtitle?.string {
             let request = MKLocalSearch.Request()
             request.naturalLanguageQuery = subTitle.contains(title) ? subTitle : title + ", " + subTitle
+            
+            // Log the selected place name and subtitle
+            print("Selected place title: \(title), subtitle: \(subTitle)")
+            
             let search = MKLocalSearch(request: request)
             search.start { [weak self] (result, error) in
-                guard error == nil, let coords = result?.mapItems.first?.placemark.coordinate else {return}
+                guard error == nil, let coords = result?.mapItems.first?.placemark.coordinate else { return }
+                
+                // Log the coordinates of the selected place
+                print("Selected place coordinates: \(coords.latitude), \(coords.longitude)")
+                
+                // If needed, capture and store the place name, then pass it back to JavaScript
                 self?.mapView.setCenter(coords, animated: true)
                 self?.searchController.searchBar.text = ""
                 self?.searchController.isActive = false
